@@ -3,8 +3,10 @@ const express = require("express");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const { use } = require("react");
+const { default: Stripe } = require("stripe");
 const app = express();
 const port = process.env.PORT || 5000;
+const stripe = require("stripe")(process.env.STRIPE_PAYMENT_SECRET_KEY);
 
 // MiddleWares
 
@@ -28,6 +30,9 @@ async function run() {
     await client.connect();
     const tasksCollection = client.db("tapandearnDB").collection("tasks");
     const usersCollection = client.db("tapandearnDB").collection("users");
+    const paymentHistoryCollection = client
+      .db("tapandearnDB")
+      .collection("paymentHistory");
 
     // -------------------------------- Tasks API -----------------------------------------------
     // Post tasks method
@@ -79,20 +84,20 @@ async function run() {
       try {
         const id = req.params.id;
 
-        // 1️⃣ Find the task first
+        //  Find the task first
         const task = await tasksCollection.findOne({ _id: new ObjectId(id) });
         if (!task) return res.status(404).send({ message: "Task not found" });
 
-        // 2️⃣ Calculate refill amount
+        //  Calculate refill amount
         const refillAmount = task.required_workers * task.payable_amount;
 
-        // 3️⃣ Update user's coins (assuming you have a usersCollection and task.email)
+        //  Update user's coins (assuming you have a usersCollection and task.email)
         await usersCollection.updateOne(
           { email: task.email },
           { $inc: { coins: refillAmount } }
         );
 
-        // 4️⃣ Delete the task
+        //  Delete the task
         const result = await tasksCollection.deleteOne({
           _id: new ObjectId(id),
         });
@@ -171,6 +176,60 @@ async function run() {
       );
 
       res.send(result);
+    });
+
+    //  PATCH user coins after purchase
+    app.patch("/users/:email/add-coins", async (req, res) => {
+      const email = req.params.email;
+      const { coins } = req.body;
+      try {
+        const result = await usersCollection.updateOne(
+          { email },
+          { $inc: { coins: coins } } // increment coins
+        );
+        res.send(result);
+      } catch (err) {
+        res.status(500).send({ message: "Server error" });
+      }
+    });
+
+    // ---------------------------------- Stripe Payment Intent --------------------------------------
+
+    app.post("/create-payment-intent", async (req, res) => {
+      const amountInCents = req.body.amountInCents;
+      try {
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: amountInCents, // in cents
+          currency: "usd",
+          payment_method_types: ["card"],
+        });
+        res.json({ clientSecret: paymentIntent.client_secret });
+      } catch (error) {
+        console.error("Stripe Error:", error.message);
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    // ----------------- Save Payment history --------------+
+    // Save payment history
+    app.post("/payment-history", async (req, res) => {
+      try {
+        const payment = req.body; // expect { email, coins, amount, transactionId, date }
+        if (!payment?.email || !payment?.coins || !payment?.amount) {
+          return res.status(400).json({ error: "Missing required fields" });
+        }
+
+        const result = await paymentHistoryCollection.insertOne(payment);
+
+        res.status(201).json({
+          success: true,
+          message: "Payment history saved",
+          insertedId: result.insertedId,
+        });
+      } catch (error) {
+        console.error("Error saving payment history:", error);
+        res.status(500).json({ error: "Failed to save payment history" });
+      }
     });
 
     // Send a ping to confirm a successful connection
