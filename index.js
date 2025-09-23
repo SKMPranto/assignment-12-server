@@ -74,14 +74,32 @@ async function run() {
       res.send(result);
     });
 
-    //  Delete a task by ID
+    // Delete a task by ID and adjust user's coin
     app.delete("/tasks/:id", async (req, res) => {
       try {
         const id = req.params.id;
-        const query = { _id: new ObjectId(id) };
-        const result = await tasksCollection.deleteOne(query);
+
+        // 1️⃣ Find the task first
+        const task = await tasksCollection.findOne({ _id: new ObjectId(id) });
+        if (!task) return res.status(404).send({ message: "Task not found" });
+
+        // 2️⃣ Calculate refill amount
+        const refillAmount = task.required_workers * task.payable_amount;
+
+        // 3️⃣ Update user's coins (assuming you have a usersCollection and task.email)
+        await usersCollection.updateOne(
+          { email: task.email },
+          { $inc: { coins: refillAmount } }
+        );
+
+        // 4️⃣ Delete the task
+        const result = await tasksCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+
         res.send(result);
       } catch (error) {
+        console.error(error);
         res.status(500).send({ message: "Server error" });
       }
     });
