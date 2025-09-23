@@ -44,7 +44,37 @@ async function run() {
       res.send(result);
     });
 
-    // ✅ Delete a task by ID
+    // Get a specific task by ID
+    app.get("/tasks/task/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const task = await tasksCollection.findOne(query);
+        res.send(task);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Failed to fetch task" });
+      }
+    });
+
+    // Update task
+    app.put("/tasks/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updateTask = req.body;
+      const updateDoc = {
+        $set: updateTask,
+      };
+      const result = await tasksCollection.updateOne(
+        filter,
+        updateDoc,
+        options
+      );
+      res.send(result);
+    });
+
+    //  Delete a task by ID
     app.delete("/tasks/:id", async (req, res) => {
       try {
         const id = req.params.id;
