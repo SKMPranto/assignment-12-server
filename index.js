@@ -29,13 +29,15 @@ async function run() {
     const tasksCollection = client.db("tapandearnDB").collection("tasks");
     const usersCollection = client.db("tapandearnDB").collection("users");
 
-    // Tasks API
+    // -------------------------------- Tasks API -----------------------------------------------
     app.get("/tasks", async (req, res) => {
       const result = await tasksCollection.find().toArray();
       res.send(result);
     });
 
-    // Users API
+    // ------------------------------  Users API   -----------------------------------------------
+
+    // Save the users in db
     app.post("/users", async (req, res) => {
       const { username, email, role, photoURL } = req.body;
 
@@ -64,6 +66,23 @@ async function run() {
       res
         .status(201)
         .send({ message: "User created successfully", user: newUser });
+    });
+
+    // ----------- Get a single user by email
+    app.get("/users/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+        const user = await usersCollection.findOne({ email });
+
+        if (!user) {
+          return res.status(404).send({ message: "User not found" });
+        }
+
+        res.send(user);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Internal Server Error" });
+      }
     });
 
     // Send a ping to confirm a successful connection
