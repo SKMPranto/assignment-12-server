@@ -1,7 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const { use } = require("react");
 const app = express();
 const port = process.env.PORT || 5000;
@@ -36,6 +36,26 @@ async function run() {
       const result = await tasksCollection.insertOne(newTask);
       res.send(result);
     });
+
+    // Get all tasks added by a specific user
+    app.get("/tasks/:email", async (req, res) => {
+      const email = req.params.email;
+      const result = await tasksCollection.find({ email }).toArray();
+      res.send(result);
+    });
+
+    // ✅ Delete a task by ID
+    app.delete("/tasks/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await tasksCollection.deleteOne(query);
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: "Server error" });
+      }
+    });
+
     // get tasks method
     app.get("/tasks", async (req, res) => {
       const result = await tasksCollection.find().toArray();
