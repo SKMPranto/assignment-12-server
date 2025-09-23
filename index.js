@@ -30,6 +30,13 @@ async function run() {
     const usersCollection = client.db("tapandearnDB").collection("users");
 
     // -------------------------------- Tasks API -----------------------------------------------
+    // Post tasks method
+    app.post("/tasks", async (req, res) => {
+      const newTask = req.body;
+      const result = await tasksCollection.insertOne(newTask);
+      res.send(result);
+    });
+    // get tasks method
     app.get("/tasks", async (req, res) => {
       const result = await tasksCollection.find().toArray();
       res.send(result);
@@ -83,6 +90,19 @@ async function run() {
         console.error(error);
         res.status(500).send({ message: "Internal Server Error" });
       }
+    });
+
+    // -------- deduct Coin amount ---------
+    app.patch("/users/:email/deduct-coins", async (req, res) => {
+      const email = req.params.email;
+      const { amount } = req.body;
+
+      const result = await usersCollection.updateOne(
+        { email },
+        { $inc: { coins: -amount } }
+      );
+
+      res.send(result);
     });
 
     // Send a ping to confirm a successful connection
