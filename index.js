@@ -214,10 +214,31 @@ async function run() {
     // Save payment history
     app.post("/payment-history", async (req, res) => {
       try {
-        const payment = req.body; // expect { email, coins, amount, transactionId, date }
-        if (!payment?.email || !payment?.coins || !payment?.amount) {
+        const { name, email, coins, amount, transactionId, date, card } =
+          req.body;
+
+        //  Check all required fields
+        if (
+          !name ||
+          !email ||
+          !coins ||
+          !amount ||
+          !transactionId ||
+          !date ||
+          !card
+        ) {
           return res.status(400).json({ error: "Missing required fields" });
         }
+
+        const payment = {
+          name,
+          email,
+          coins,
+          amount,
+          transactionId,
+          date,
+          card,
+        };
 
         const result = await paymentHistoryCollection.insertOne(payment);
 
@@ -229,6 +250,19 @@ async function run() {
       } catch (error) {
         console.error("Error saving payment history:", error);
         res.status(500).json({ error: "Failed to save payment history" });
+      }
+    });
+
+    // Get all the data for a user
+
+    app.get("/payments/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+        const result = await paymentHistoryCollection.find({ email }).toArray();
+        res.status(200).json(result);
+      } catch (error) {
+        console.error("Error fetching payment history:", error);
+        res.status(500).json({ error: "Failed to fetch payment history" });
       }
     });
 
