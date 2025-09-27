@@ -36,6 +36,9 @@ async function run() {
     const paymentHistoryCollection = client
       .db("tapandearnDB")
       .collection("paymentHistory");
+    const withdrawalsCollection = client
+      .db("tapandearnDB")
+      .collection("withdrawals");
 
     // -------------------------------- Tasks API -----------------------------------------------
     // Post tasks method
@@ -198,7 +201,6 @@ async function run() {
 
     // ---------------------------------- Task Submission API --------------------------------------
 
-
     // Task submission by user
     app.post("/submit-task", async (req, res) => {
       try {
@@ -236,7 +238,7 @@ async function run() {
     });
 
     // Get all submissions for a specific email
-    app.get("/submissions/:email", async (req, res) => {
+    app.get("/submit-task/:email", async (req, res) => {
       try {
         const email = req.params.email;
         const result = await usersSubmissionsCollection
@@ -247,6 +249,15 @@ async function run() {
         console.error("Error fetching submissions:", error);
         res.status(500).send({ message: "Failed to fetch submissions" });
       }
+    });
+
+    // ------------------------------------ Withdraw Request API ------------------------------------
+
+    // Withdraw request by user
+    app.post("/withdrawals", async (req, res) => {
+      const withdrawRequest = req.body;
+      const result = await withdrawalsCollection.insertOne(withdrawRequest);
+      res.send(result);
     });
 
     // ---------------------------------- Stripe Payment Intent --------------------------------------
