@@ -214,6 +214,7 @@ async function run() {
 
         const exists = await usersSubmissionsCollection.findOne({
           task_id: newSubmission.task_id,
+          worker_email: newSubmission.worker_email,
         });
 
         // check if the user already submitted this task
@@ -249,6 +250,40 @@ async function run() {
         console.error("Error fetching submissions:", error);
         res.status(500).send({ message: "Failed to fetch submissions" });
       }
+    });
+
+    // Get all submissions for a specific email
+    app.get("/submittedTask/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+        const result = await usersSubmissionsCollection
+          .find({ buyer_email: email })
+          .toArray();
+        res.status(200).json(result);
+      } catch (error) {
+        console.error("Error fetching submissions:", error);
+        res.status(500).send({ message: "Failed to fetch submissions" });
+      }
+    });
+
+    // Approve submission
+    app.patch("/submissions/:id/approve", async (req, res) => {
+      const { id } = req.params;
+      const result = await usersSubmissionsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { status: "approved" } }
+      );
+      res.send({ success: true, modifiedCount: result.modifiedCount });
+    });
+
+    // Reject submission
+    app.patch("/submissions/:id/reject", async (req, res) => {
+      const { id } = req.params;
+      const result = await usersSubmissionsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { status: "rejected" } }
+      );
+      res.send({ success: true, modifiedCount: result.modifiedCount });
     });
 
     // ------------------------------------ Withdraw Request API ------------------------------------
