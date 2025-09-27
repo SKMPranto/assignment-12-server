@@ -197,6 +197,9 @@ async function run() {
     });
 
     // ---------------------------------- Task Submission API --------------------------------------
+
+
+    // Task submission by user
     app.post("/submit-task", async (req, res) => {
       try {
         const newSubmission = req.body;
@@ -229,6 +232,20 @@ async function run() {
       } catch (error) {
         console.error("Error submitting task:", error);
         res.status(500).send({ message: "Failed to submit task" });
+      }
+    });
+
+    // Get all submissions for a specific email
+    app.get("/submissions/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+        const result = await usersSubmissionsCollection
+          .find({ worker_email: email })
+          .toArray();
+        res.status(200).json(result);
+      } catch (error) {
+        console.error("Error fetching submissions:", error);
+        res.status(500).send({ message: "Failed to fetch submissions" });
       }
     });
 
