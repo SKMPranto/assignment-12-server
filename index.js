@@ -30,6 +30,9 @@ async function run() {
     await client.connect();
     const tasksCollection = client.db("tapandearnDB").collection("tasks");
     const usersCollection = client.db("tapandearnDB").collection("users");
+    const usersSubmissionsCollection = client
+      .db("tapandearnDB")
+      .collection("userSubmissions");
     const paymentHistoryCollection = client
       .db("tapandearnDB")
       .collection("paymentHistory");
@@ -190,6 +193,42 @@ async function run() {
         res.send(result);
       } catch (err) {
         res.status(500).send({ message: "Server error" });
+      }
+    });
+
+    // ---------------------------------- Task Submission API --------------------------------------
+    app.post("/submit-task", async (req, res) => {
+      try {
+        const newSubmission = req.body;
+        // check the required fields
+        if (!newSubmission.task_id || !newSubmission.worker_email) {
+          return res
+            .status(400)
+            .send({ message: "Task ID and Worker Email are required" });
+        }
+
+        const exists = await usersSubmissionsCollection.findOne({
+          task_id: newSubmission.task_id,
+        });
+
+        // check if the user already submitted this task
+        if (exists) {
+          return res
+            .status(409)
+            .send({ message: "You have already submitted this task" });
+        }
+
+        const result = await usersSubmissionsCollection.insertOne(
+          newSubmission
+        );
+        res.status(201).json({
+          success: true,
+          message: "Task submitted successfully",
+          insertedId: result.insertedId,
+        });
+      } catch (error) {
+        console.error("Error submitting task:", error);
+        res.status(500).send({ message: "Failed to submit task" });
       }
     });
 
