@@ -154,6 +154,12 @@ async function run() {
         .send({ message: "User created successfully", user: newUser });
     });
 
+    // Get API
+    app.get("/users", async (req, res) => {
+      const users = await usersCollection.find().toArray();
+      res.send(users);
+    });
+
     // ----------- Get a single user by email
     app.get("/users/:email", async (req, res) => {
       try {
@@ -197,6 +203,34 @@ async function run() {
       } catch (err) {
         res.status(500).send({ message: "Server error" });
       }
+    });
+
+    // Update user role by email
+    app.patch("/users/:email/role", async (req, res) => {
+      try {
+        const email = req.params.email;
+        const { role } = req.body; // new role from client
+
+        if (!role) {
+          return res.status(400).send({ error: "Role is required" });
+        }
+
+        const result = await usersCollection.updateOne(
+          { email },
+          { $set: { role } }
+        );
+
+        res.send(result);
+      } catch (err) {
+        res.status(500).send({ error: "Failed to update role" });
+      }
+    });
+
+    // Delete user by email
+    app.delete("/users/:email", async (req, res) => {
+      const email = req.params.email;
+      const result = await usersCollection.deleteOne({ email });
+      res.send(result);
     });
 
     // ---------------------------------- Task Submission API --------------------------------------
@@ -295,6 +329,22 @@ async function run() {
       res.send(result);
     });
 
+    // Get all withdraw requests
+    app.get("/withdrawals", async (req, res) => {
+      const result = await withdrawalsCollection.find().toArray();
+      res.send(result);
+    });
+
+    // Approve withdraw request
+    app.patch("/withdrawals/:id/approve", async (req, res) => {
+      const { id } = req.params;
+      const result = await withdrawalsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { status: "approved" } }
+      );
+      res.send({ success: true, modifiedCount: result.modifiedCount });
+    });
+
     // ---------------------------------- Stripe Payment Intent --------------------------------------
 
     app.post("/create-payment-intent", async (req, res) => {
@@ -353,6 +403,12 @@ async function run() {
         console.error("Error saving payment history:", error);
         res.status(500).json({ error: "Failed to save payment history" });
       }
+    });
+
+    // Get all payment history
+    app.get("/payments", async (req, res) => {
+      const result = await paymentHistoryCollection.find().toArray();
+      res.send(result);
     });
 
     // Get all the data for a user
